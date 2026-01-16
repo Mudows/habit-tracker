@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "habits": [
+    {
+      "category": "water",
+      "name": "Drink Water",
+      "unit": "cups",
+      "target_per_day": 8,
+      "created_at": "2026-01-16"
+    }
+  ],
+  "entries": [
+    {
+      "date": "2026-01-16",
+      "habit_category": "water",
+      "value": 6,
+      "note": ""
+    }
+  ]
+}
