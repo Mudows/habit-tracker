@@ -43,6 +43,7 @@ def pause(message: str | None = None) -> None:
         console.print(f"\n{message}")
     Prompt.ask("\nPress ENTER to continue", default="")
 
+
 def add_habit_flow() -> None:
     # This function adds a new habit to the data.
     data = load_data()
@@ -137,6 +138,94 @@ def list_habits_flow() -> None:
 
     pause()
 
+
+def log_today_flow() -> None:
+    data = load_data()
+    habits = data.get("habits", [])
+
+    console.clear()
+    console.print(Panel.fit("[bold]Log Habit Entry[/bold]", subtitle="Today"))
+
+    if not habits:
+        pause("No habits found. Create a habit first.")
+        return
+
+    # Tabela para o usuário escolher
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("#", justify="right", style="dim", no_wrap=True)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Name")
+    table.add_column("Unit")
+    table.add_column("Target/Day", justify="right")
+
+    for i, h in enumerate(habits, start=1):
+        table.add_row(
+            str(i),
+            str(h.get("id", "")),
+            str(h.get("name", "")),
+            str(h.get("unit", "")),
+            str(h.get("target_per_day", "")),
+        )
+
+    console.print(table)
+
+    idx = IntPrompt.ask("\nChoose a habit number", default=1)
+    if idx < 1 or idx > len(habits):
+        pause("Invalid selection.")
+        return
+
+    habit = habits[idx - 1]
+    habit_id = habit["id"]
+
+    today = date.today().isoformat()
+    value = IntPrompt.ask(f"Value for today ({habit.get('unit','times')})", default=1)
+    note = Prompt.ask("Note (optional)", default="").strip()
+
+    entry = {
+        "date": today,
+        "habit_id": habit_id,
+        "value": int(value),
+        "note": note,
+    }
+
+    data.setdefault("entries", []).append(entry)
+    save_data(data)
+
+    pause(f"Entry saved: {habit.get('name')} = {value} on {today}.")
+
+def list_entries_flow() -> None:
+    data = load_data()
+    entries = data.get("entries", [])
+    habits = {h["id"]: h for h in data.get("habits", [])}
+
+    console.clear()
+    console.print(Panel.fit("[bold]Entries[/bold]"))
+
+    if not entries:
+        pause("No entries found.")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Date", style="dim", no_wrap=True)
+    table.add_column("Habit")
+    table.add_column("Value", justify="right")
+    table.add_column("Note")
+
+    # show recent entries first (by date).
+    for e in sorted(entries, key=lambda x: x.get("date",""), reverse=True)[:50]:
+        h = habits.get(e.get("habit_id", ""), {})
+        habit_name = h.get("name", e.get("habit_id", ""))
+        table.add_row(
+            str(e.get("date","")),
+            str(habit_name),
+            str(e.get("value","")),
+            str(e.get("note","")),
+        )
+
+    console.print(table)
+    pause()
+
+
 def start_app() -> None:
     while True:
         # creating the main menu of the application
@@ -148,19 +237,23 @@ def start_app() -> None:
         console.print("\nWhat would you like to do?")
         console.print("1) Add habit")
         console.print("2) List habits")
-        console.print("3) Exit")
+        console.print("3) Log habit entry (today)")
+        console.print("4) List entries")
+        console.print("5) Exit")
 
-        choice = Prompt.ask("\nChoose an option", choices=["1", "2", "3"], default="2")
+        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5"], default="2")
 
         if choice == "1":
             add_habit_flow()
         elif choice == "2":
             list_habits_flow()
+        elif choice == "3":
+            log_today_flow()
+        elif choice == "4":
+            list_entries_flow()
         else:
-            console.print("\nGoodbye.")
+            console.print("\nGoodbye!")
             break
-
-
 
 
 

@@ -2,7 +2,7 @@
   "version": 1,
   "habits": [
     {
-      "category": "water",
+      "id": "water",
       "name": "Drink Water",
       "unit": "cups",
       "target_per_day": 8,
@@ -25,10 +25,16 @@
   ],
   "entries": [
     {
-      "date": "2026-01-16",
-      "habit_category": "water",
-      "value": 6,
-      "note": ""
+      "date": "2026-01-18",
+      "habit_id": "study",
+      "value": 20,
+      "note": "This is a note"
+    },
+    {
+      "date": "2026-01-19",
+      "habit_id": "water",
+      "value": 4,
+      "note": "none"
     }
   ]
 }
