@@ -13,6 +13,8 @@ from rich.table import Table
 from rich.panel import Panel
 
 from services.data_service import load_data, save_data
+from services.stats import entries_for_habit, totals_by_day, streak_days_meeting_target, weekly_total, monthly_total
+
 
 
 console = Console()
@@ -226,6 +228,45 @@ def list_entries_flow() -> None:
     pause()
 
 
+def stats_overview_flow() -> None:
+    data = load_data()
+    habits = data.get("habits", [])
+
+    console.clear()
+    console.print(Panel.fit("[bold]Stats Overview[/bold]"))
+
+    if not habits:
+        pause("No habits found.")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Habit")
+    table.add_column("Last 7d", justify="right")
+    table.add_column("Last 30d", justify="right")
+    table.add_column("Streak (days)", justify="right")
+
+    for h in habits:
+        hid = h["id"]
+        target = int(h.get("target_per_day", 1))
+
+        ent = entries_for_habit(data, hid)
+        totals = totals_by_day(ent)
+
+        wk = weekly_total(totals)
+        mo = monthly_total(totals)
+        streak = streak_days_meeting_target(totals, target)
+
+        table.add_row(
+            str(h.get("name", hid)),
+            str(wk),
+            str(mo),
+            str(streak),
+        )
+
+    console.print(table)
+    pause()
+
+
 def start_app() -> None:
     while True:
         # creating the main menu of the application
@@ -239,9 +280,10 @@ def start_app() -> None:
         console.print("2) List habits")
         console.print("3) Log habit entry (today)")
         console.print("4) List entries")
-        console.print("5) Exit")
+        console.print("5) Stats overview")
+        console.print("6) Exit")
 
-        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5"], default="2")
+        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5","6"], default="2")
 
         if choice == "1":
             add_habit_flow()
@@ -251,6 +293,8 @@ def start_app() -> None:
             log_today_flow()
         elif choice == "4":
             list_entries_flow()
+        elif choice == "5":
+            stats_overview_flow()
         else:
             console.print("\nGoodbye!")
             break

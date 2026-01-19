@@ -35,6 +35,12 @@
       "habit_id": "water",
       "value": 4,
       "note": "none"
+    },
+    {
+      "date": "2026-01-19",
+      "habit_id": "water",
+      "value": 3,
+      "note": ""
     }
   ]
 }

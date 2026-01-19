@@ -22,7 +22,6 @@ DEFAULT_DATA: Dict[str, Any] = {
 class DataPaths:
     data_file: Path
 
-
 def get_default_paths() -> DataPaths:
     # services/ -> project root -> data/habits.json
     project_root = Path(__file__).resolve().parents[1]
