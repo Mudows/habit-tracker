@@ -13,7 +13,8 @@ from rich.table import Table
 from rich.panel import Panel
 
 from services.data_service import load_data, save_data
-from services.stats import entries_for_habit, totals_by_day, streak_days_meeting_target, weekly_total, monthly_total
+from services.sparkline import sparkline
+from services.stats import entries_for_habit, totals_by_day, streak_days_meeting_target, weekly_total, monthly_total, last_n_days_values
 
 
 
@@ -190,10 +191,25 @@ def log_today_flow() -> None:
         "note": note,
     }
 
-    data.setdefault("entries", []).append(entry)
-    save_data(data)
+    entries = data.setdefault("entries", [])
+    today = entry["date"]
+    hid = entry["habit_id"]
 
-    pause(f"Entry saved: {habit.get('name')} = {value} on {today}.")
+    existing = next((e for e in entries if e.get("date") == today and e.get("habit_id") == hid), None)
+
+    if existing:
+        existing["value"] = entry["value"]
+        existing["note"] = entry.get("note", "")
+        action = "updated"
+    else:
+        entries.append(entry)
+        action = "created"
+
+    save_data(data)
+    pause(f"Entry {action}: {habit.get('name')} = {entry['value']} on {today}.")
+
+
+    # pause(f"Entry saved: {habit.get('name')} = {value} on {today}.")
 
 def list_entries_flow() -> None:
     data = load_data()
@@ -267,6 +283,57 @@ def stats_overview_flow() -> None:
     pause()
 
 
+def habit_details_flow() -> None:
+    data = load_data()
+    habits = data.get("habits", [])
+
+    console.clear()
+    console.print(Panel.fit("[bold]Habit Details[/bold]"))
+
+    if not habits:
+        pause("No habits found.")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("#", justify="right", style="dim", no_wrap=True)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Name")
+
+    for i, h in enumerate(habits, start=1):
+        table.add_row(str(i), str(h.get("id","")), str(h.get("name","")))
+
+    console.print(table)
+
+    idx = IntPrompt.ask("\nChoose a habit number", default=1)
+    if idx < 1 or idx > len(habits):
+        pause("Invalid selection.")
+        return
+
+    h = habits[idx - 1]
+    hid = h["id"]
+    target = int(h.get("target_per_day", 1))
+
+    ent = entries_for_habit(data, hid)
+    totals = totals_by_day(ent)
+
+    wk = weekly_total(totals)
+    mo = monthly_total(totals)
+    streak = streak_days_meeting_target(totals, target)
+    vals14 = last_n_days_values(totals, 14)
+    chart = sparkline(vals14)
+
+    console.clear()
+    console.print(Panel.fit(f"[bold]{h.get('name', hid)}[/bold]  [dim]({hid})[/dim]"))
+    console.print(f"Target/day: {target} {h.get('unit','times')}")
+    console.print(f"Last 7 days: {wk}")
+    console.print(f"Last 30 days: {mo}")
+    console.print(f"Streak: {streak} day(s)")
+    console.print(f"\nLast 14 days: {chart}")
+    console.print(f"[dim]{' '.join(str(v).rjust(2) for v in vals14)}[/dim]")
+
+    pause()
+
+
 def start_app() -> None:
     while True:
         # creating the main menu of the application
@@ -281,9 +348,10 @@ def start_app() -> None:
         console.print("3) Log habit entry (today)")
         console.print("4) List entries")
         console.print("5) Stats overview")
-        console.print("6) Exit")
+        console.print("6) Habits details")
+        console.print("7) Exit")
 
-        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5","6"], default="2")
+        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5","6","7"], default="2")
 
         if choice == "1":
             add_habit_flow()
@@ -295,6 +363,8 @@ def start_app() -> None:
             list_entries_flow()
         elif choice == "5":
             stats_overview_flow()
+        elif choice == "6":
+            habit_details_flow()
         else:
             console.print("\nGoodbye!")
             break
