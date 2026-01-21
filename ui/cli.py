@@ -1,11 +1,9 @@
-# Não esquecer de executar o venv\Services\activate
-# para poder testar o código rodando no terminal
-
-
 from __future__ import annotations
 
 import re
 from datetime import date
+
+from typing import Any, Dict
 
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt
@@ -15,7 +13,6 @@ from rich.panel import Panel
 from services.data_service import load_data, save_data
 from services.sparkline import sparkline
 from services.stats import entries_for_habit, totals_by_day, streak_days_meeting_target, weekly_total, monthly_total, last_n_days_values
-
 
 
 console = Console()
@@ -45,6 +42,110 @@ def pause(message: str | None = None) -> None:
     if message:
         console.print(f"\n{message}")
     Prompt.ask("\nPress ENTER to continue", default="")
+
+
+def choose_habit(data: Dict[str, Any]) -> Dict[str, Any] | None:
+    habits = data.get("habits", [])
+    if not habits:
+        pause("No habits found.")
+        return None
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("#", justify="right", style="dim", no_wrap=True)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Name")
+    table.add_column("Unit")
+    table.add_column("Target/Day", justify="right")
+
+    for i, h in enumerate(habits, start=1):
+        table.add_row(
+            str(i),
+            str(h.get("id", "")),
+            str(h.get("name", "")),
+            str(h.get("unit", "")),
+            str(h.get("target_per_day", "")),
+        )
+
+    console.print(table)
+
+    idx = IntPrompt.ask("\nChoose a habit number", default=1)
+    if idx < 1 or idx > len(habits):
+        pause("Invalid selection.")
+        return None
+
+    return habits[idx - 1]
+
+def edit_habit_flow() -> None:
+    data = load_data()
+
+    console.clear()
+    console.print(Panel.fit("[bold]Edit Habit[/bold]"))
+
+    habit = choose_habit(data)
+    if not habit:
+        return
+
+    console.print("\n[dim]Leave blank to keep current value.[/dim]")
+
+    current_name = str(habit.get("name", ""))
+    current_unit = str(habit.get("unit", "times"))
+    current_target = int(habit.get("target_per_day", 1))
+
+    new_name = Prompt.ask("Name", default=current_name).strip()
+    new_unit = Prompt.ask("Unit", default=current_unit).strip()
+
+    # Target: permitir ENTER mantendo atual
+    raw_target = Prompt.ask("Target per day", default=str(current_target)).strip()
+    try:
+        new_target = int(raw_target)
+        if new_target < 0:
+            raise ValueError
+    except ValueError:
+        pause("Invalid target. Must be a non-negative integer.")
+        return
+
+    habit["name"] = new_name if new_name else current_name
+    habit["unit"] = new_unit if new_unit else current_unit
+    habit["target_per_day"] = new_target
+
+    save_data(data)
+    pause("Habit updated successfully.")
+
+def remove_habit_flow() -> None:
+    data = load_data()
+
+    console.clear()
+    console.print(Panel.fit("[bold]Delete Habit[/bold]"))
+
+    habit = choose_habit(data)
+    if not habit:
+        return
+
+    hid = habit.get("id", "")
+    name = habit.get("name", hid)
+
+    console.print(f"\nYou are about to delete: [bold]{name}[/bold] ([dim]{hid}[/dim])")
+    confirm = Prompt.ask("Type DELETE to confirm", default="").strip()
+
+    if confirm != "DELETE":
+        pause("Deletion cancelled.")
+        return
+
+    # o que fazer com entries?
+    console.print("\nWhat should happen to existing entries for this habit?")
+    console.print("1) Delete habit only (keep entries)")
+    console.print("2) Delete habit + delete associated entries (recommended)")
+
+    mode = Prompt.ask("Choose", choices=["1", "2"], default="2")
+
+    # Remove habit
+    data["habits"] = [h for h in data.get("habits", []) if h.get("id") != hid]
+
+    if mode == "2":
+        data["entries"] = [e for e in data.get("entries", []) if e.get("habit_id") != hid]
+
+    save_data(data)
+    pause("Habit deleted successfully.")
 
 
 def add_habit_flow() -> None:
@@ -345,25 +446,31 @@ def start_app() -> None:
         console.print("\nWhat would you like to do?")
         console.print("1) Add habit")
         console.print("2) List habits")
-        console.print("3) Log habit entry (today)")
-        console.print("4) List entries")
-        console.print("5) Stats overview")
-        console.print("6) Habits details")
-        console.print("7) Exit")
+        console.print("3) Edit habit")
+        console.print("4) Remove habit")
+        console.print("5) Log habit entry (today)")
+        console.print("6) List entries")
+        console.print("7) Stats overview")
+        console.print("8) Habits details")
+        console.print("9) Exit")
 
-        choice = Prompt.ask("\nChoose an option", choices=["1","2","3","4","5","6","7"], default="2")
+        choice = Prompt.ask("\nChoose an option", choices=[str(i) for i in range(1, 10)], default="2")
 
         if choice == "1":
             add_habit_flow()
         elif choice == "2":
             list_habits_flow()
         elif choice == "3":
-            log_today_flow()
+            edit_habit_flow()
         elif choice == "4":
-            list_entries_flow()
+            remove_habit_flow()
         elif choice == "5":
-            stats_overview_flow()
+            log_today_flow()
         elif choice == "6":
+            list_entries_flow()
+        elif choice == "7":
+            stats_overview_flow()
+        elif choice == "8":
             habit_details_flow()
         else:
             console.print("\nGoodbye!")
