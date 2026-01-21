@@ -10,17 +10,10 @@
     },
     {
       "id": "study",
-      "name": "Study Python",
+      "name": "Study Pytest",
       "unit": "minutes",
       "target_per_day": 20,
       "created_at": "2026-01-17"
-    },
-    {
-      "id": "code",
-      "name": "Check recursive functions",
-      "unit": "minutes",
-      "target_per_day": 15,
-      "created_at": "2026-01-18"
     }
   ],
   "entries": [
@@ -43,21 +36,9 @@
       "note": ""
     },
     {
-      "date": "2026-01-19",
-      "habit_id": "code",
-      "value": 10,
-      "note": "it works"
-    },
-    {
       "date": "2026-01-20",
       "habit_id": "water",
       "value": 8,
-      "note": ""
-    },
-    {
-      "date": "2026-01-20",
-      "habit_id": "code",
-      "value": 15,
       "note": ""
     }
   ]
